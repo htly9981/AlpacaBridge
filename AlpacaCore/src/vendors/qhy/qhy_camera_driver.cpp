@@ -1333,8 +1333,11 @@ public:
                 local_buf = exposure_buffer_;
             }
 
+            const auto transfer_start = std::chrono::steady_clock::now();
             bool ok = QHYSDKWrapper::instance().get_single_frame(
                 id, local_buf.data(), w, h, bpp, channels);
+            const double transfer_s = std::chrono::duration<double>(
+                std::chrono::steady_clock::now() - transfer_start).count();
 
             std::lock_guard<std::mutex> lk(mutex_);
             if (ok) {
@@ -1345,9 +1348,13 @@ public:
                 exposure_channels_ = channels;
                 exposure_status_   = QHYExposureStatus::Success;
                 image_ready_       = true;
+                ALPACA_LOG_INFO("QHY", "GetQHYCCDSingleFrame completed in " +
+                                       std::to_string(transfer_s) + "s");
             } else {
                 exposure_status_ = QHYExposureStatus::Failed;
                 image_ready_     = false;
+                ALPACA_LOG_WARN("QHY", "GetQHYCCDSingleFrame failed after " +
+                                       std::to_string(transfer_s) + "s");
             }
             exposure_deadline_valid_ = false;
         });
